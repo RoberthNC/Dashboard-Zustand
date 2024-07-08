@@ -1,4 +1,5 @@
-import { create } from "zustand";
+import { create, StateCreator } from "zustand";
+import { devtools, persist } from "zustand/middleware";
 
 interface Bear {
   id: number;
@@ -10,11 +11,10 @@ interface BearState {
   polarBears: number;
   pandaBears: number;
   bears: Bear[];
+}
 
-  computed: {
-    totalBears: number;
-  };
-
+interface Actions {
+  totalBears: () => number;
   increaseBlackBears: (by: number) => void;
   increasePolarBears: (by: number) => void;
   increasePandaBears: (by: number) => void;
@@ -24,42 +24,61 @@ interface BearState {
   clearBears: () => void;
 }
 
-export const useBearStore = create<BearState>()((set, get) => ({
+const bearStore: StateCreator<
+  BearState & Actions,
+  [["zustand/devtools", never]]
+> = (set, get) => ({
   blackBears: 10,
   polarBears: 5,
   pandaBears: 1,
-  bears: [
-    {
-      id: 1,
-      name: "Bear #1",
-    },
-  ],
-  computed: {
-    get totalBears(): number {
-      return get().blackBears + get().polarBears + get().pandaBears;
-    },
+  bears: [],
+  totalBears: () => {
+    return get().blackBears + get().polarBears + get().pandaBears;
   },
   increaseBlackBears: (by: number) => {
-    set((state) => ({ blackBears: state.blackBears + by }));
+    set(
+      (state) => ({ blackBears: state.blackBears + by }),
+      false,
+      "increaseBlackBears"
+    );
   },
   increasePolarBears: (by: number) => {
-    set((state) => ({ polarBears: state.polarBears + by }));
+    set(
+      (state) => ({ polarBears: state.polarBears + by }),
+      false,
+      "increasePolarBears"
+    );
   },
   increasePandaBears: (by) => {
-    set((state) => ({ pandaBears: state.pandaBears + by }));
+    set(
+      (state) => ({ pandaBears: state.pandaBears + by }),
+      false,
+      "increasePandaBears"
+    );
   },
   doNothing: () => {
-    set((state) => ({ bears: [...state.bears] }));
+    set((state) => ({ bears: [...state.bears] }), false, "doNothing");
   },
   addBear: () => {
-    set((state) => ({
-      bears: [
-        ...state.bears,
-        { id: state.bears.length + 1, name: `Bear #${state.bears.length + 1}` },
-      ],
-    }));
+    set(
+      (state) => ({
+        bears: [
+          ...state.bears,
+          {
+            id: state.bears.length + 1,
+            name: `Bear #${state.bears.length + 1}`,
+          },
+        ],
+      }),
+      false,
+      "addBear"
+    );
   },
   clearBears: () => {
-    set({ bears: [] });
+    set({ bears: [] }, false, "clearBears");
   },
-}));
+});
+
+export const useBearStore = create<BearState & Actions>()(
+  devtools(persist(bearStore, { name: "bears-store" }))
+);
